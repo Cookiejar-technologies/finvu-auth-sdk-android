@@ -4,6 +4,14 @@ A simple, secure Android SDK for integrating Finvu authentication into your app,
 
 ---
 
+## 📋 Requirements
+
+**Minimum SDK version:** 25
+
+**Minimum Kotlin version:** 1.9.0
+
+---
+
 ## 📦 Installation
 
 ### 1. Add GitHub Packages Repository
@@ -52,7 +60,7 @@ Add the following attribute to your `<application>` tag in your `AndroidManifest
 
 ## 🚀 Android Integration
 
-### 1. Setup the WebView Bridge (Recommended)
+### Setup the WebView Bridge
 
 The SDK provides a single method to set up the WebView bridge. No manual JS interface wiring is needed!
 
@@ -85,111 +93,297 @@ class MainActivity : AppCompatActivity() {
 }
 ```
 
-- **That's it!** The bridge is ready for your web app to use.
-
 ---
 
 ## 🌐 WebView/JavaScript Usage
 
 Once the bridge is set up, your web app can call the following methods from JavaScript:
 
+### Available Methods
+
 ```javascript
-window.finvu_authentication_bridge.initAuth(appId, callbackName);
+// Initialize the SDK with your app configuration
+window.finvu_authentication_bridge.initAuth(initConfig, callbackName);
+
+// Start authentication with phone number
 window.finvu_authentication_bridge.startAuth(phoneNumber, callbackName);
+
+// Verify OTP
 window.finvu_authentication_bridge.verifyOtp(phoneNumber, otp, callbackName);
+```
+
+### Method Details
+
+#### 1. initAuth(initConfig, callbackName)
+Initializes the Finvu authentication SDK.
+
+**Parameters:**
+- `initConfig` (string): JSON configuration containing your app ID
+- `callbackName` (string): JavaScript callback function name
+
+**Example:**
+```javascript
+const config = JSON.stringify({ appId: "YOUR_APP_ID" });
+window.finvu_authentication_bridge.initAuth(config, "handleInitAuthResponse");
+```
+
+**Success Response:**
+```json
+{
+  "status": "SUCCESS",
+  "statusCode": "200"
+}
+```
+
+**Failure Responses:**
+```json
+// Missing or empty app ID
+{
+  "status": "FAILURE",
+  "errorCode": "1001",
+  "errorMessage": "appId is required"
+}
+
+// SDK initialization failed
+{
+  "status": "FAILURE",
+  "errorCode": "1002",
+  "errorMessage": "Authentication failed, SDK initialization failed. Please try initializing the SDK again."
+}
+```
+
+#### 2. startAuth(phoneNumber, callbackName)
+Starts the authentication process for a phone number.
+
+**Parameters:**
+- `phoneNumber` (string): User's mobile number (without country code)
+- `callbackName` (string): JavaScript callback function name
+
+**Example:**
+```javascript
+window.finvu_authentication_bridge.startAuth("9876543210", "handleStartAuthResponse");
+```
+
+**Success Responses:**
+```json
+// OTP sent successfully
+{
+  "status": "INITIATE",
+  "statusCode": "200",
+  "authType": "SILENT_AUTH",
+  "deliveryChannel": ""
+}
+
+
+// Authentication completed with token
+{
+  "status": "SUCCESS",
+  "statusCode": "200",
+  "authType": "SILENT_AUTH",
+  "token": "your_auth_token_here"
+}
+```
+
+**Failure Responses:**
+```json
+// Invalid phone number format
+{
+  "status": "FAILURE",
+  "errorCode": "1001",
+  "errorMessage": "Invalid phone number format"
+}
+
+// Silent Network Authentication failed
+{
+  "status": "FAILURE",
+  "errorCode": "1002",
+  "errorMessage": "Authentication failed, SNA failed."
+}
+
+// Generic failure
+{
+  "status": "FAILURE",
+  "errorCode": "1002",
+  "errorMessage": "Authentication failed, something went wrong."
+}
+```
+
+#### 3. verifyOtp(phoneNumber, otp, callbackName)
+Verifies the OTP entered by the user.
+
+**Parameters:**
+- `phoneNumber` (string): User's mobile number (same as used in startAuth)
+- `otp` (string): OTP entered by user
+- `callbackName` (string): JavaScript callback function name
+
+**Example:**
+```javascript
+window.finvu_authentication_bridge.verifyOtp("9876543210", "123456", "handleVerifyOtpResponse");
+```
+
+**Success Response:**
+```json
+{
+  "status": "SUCCESS",
+  "statusCode": "200",
+  "authType": "OTP",
+  "token": "your_auth_token_here"
+}
+```
+
+**Failure Responses:**
+```json
+// Invalid OTP format
+{
+  "status": "FAILURE",
+  "errorCode": "1001",
+  "errorMessage": "Invalid OTP format"
+}
+
+// OTP verification failed
+{
+  "status": "FAILURE",
+  "errorCode": "1002",
+  "errorMessage": "Authentication failed, something went wrong."
+}
 ```
 
 ### Callback Flow & Status Handling
 
-> **Important:** After you call `startAuth(phoneNumber, callbackName)`, the **same callback function** (e.g., `handleStartAuthResponse`) will be invoked for all subsequent statuses in the authentication flow. This includes `INITIATE`, `OTP_AUTO_READ`, and `SUCCESS` (with token), as well as any errors (`FAILURE`).
+> **Important:** After calling `startAuth(phoneNumber, callbackName)`, the same callback function will be invoked for all subsequent statuses in the authentication flow, including `INITIATE`, `OTP_AUTO_READ`, `VERIFY`, and `SUCCESS`.
 >
-> - If OTP auto-read is successful, you may receive `OTP_AUTO_READ` and then `SUCCESS` (with token) automatically, all in the same callback.
-> - If OTP auto-read is not possible, you will receive `INITIATE` and should prompt the user to enter the OTP, then call `verifyOtp`. The response to `verifyOtp` will be delivered to its own callback.
-> - **In the case of silent authentication (`SILENT_AUTH`), wait for a `SUCCESS` status with a `token` in the same callback before proceeding. The flow is fully automatic and the token will be delivered in the same callback sequence.**
+> - **Silent Authentication**: If `authType` is `SILENT_AUTH`, wait for a `SUCCESS` status with a `token` in the same callback before proceeding.
+> - **OTP Flow**: If `authType` is `OTP`, prompt the user to enter the OTP, then call `verifyOtp`. The response will be delivered to its own callback.
+> - **Auto-read**: If OTP auto-read is successful, you may receive `OTP_AUTO_READ` and then `SUCCESS` automatically.
 
-### Example: Handling Responses in JS
-
-Define global callback functions to handle responses from the bridge:
+### Example Integration
 
 ```javascript
+// Global callback functions
+window.handleInitAuthResponse = (responseStr) => {
+  const response = JSON.parse(responseStr);
+  if (response.status === "SUCCESS") {
+    console.log("SDK initialized successfully");
+    // Proceed with authentication
+  } else {
+    console.error("SDK initialization failed:", response.errorMessage);
+  }
+};
+
 window.handleStartAuthResponse = (responseStr) => {
   const response = JSON.parse(responseStr);
-  if (response.status === "FAILURE") {
-    alert(response.errorMessage);
-  } else if (response.status === "INITIATE") {
-    // Prompt user for OTP
-  } else if (response.status === "OTP_AUTO_READ") {
-    // Auto-submit or show OTP
-  } else if (response.status === "SUCCESS" && response.token) {
-    // Use token for further API calls
+  console.log("Auth response:", response);
+  
+  switch (response.status) {
+    case "INITIATE":
+      // Show OTP input field
+      showOtpInput();
+      break;
+
+    case "SUCCESS":
+      if (response.token) {
+        // Use token for API calls
+        handleAuthSuccess(response.token);
+      }
+      break;
+    case "FAILURE":
+      // Handle error
+      showError(response.errorMessage);
+      break;
   }
-  // ... handle other statuses
 };
-```
 
-### Example Integration (React/JS)
+window.handleVerifyOtpResponse = (responseStr) => {
+  const response = JSON.parse(responseStr);
+  if (response.status === "SUCCESS" && response.token) {
+    handleAuthSuccess(response.token);
+  } else {
+    showError(response.errorMessage || "OTP verification failed");
+  }
+};
 
-```jsx
-<button onClick={() => window.finvu_authentication_bridge.initAuth("YOUR_APP_ID", "handleInitAuthResponse")}>Init Auth</button>
-<button onClick={() => window.finvu_authentication_bridge.startAuth("MOBILE_NUMBER", "handleStartAuthResponse")}>Start Auth</button>
-<input type="text" onChange={e => setOtp(e.target.value)} />
-<button onClick={() => window.finvu_authentication_bridge.verifyOtp("MOBILE_NUMBER", otp, "handleVerifyOtpResponse")}>Verify OTP</button>
+// Usage
+function initializeAuth() {
+  const config = JSON.stringify({ appId: "YOUR_APP_ID" });
+  window.finvu_authentication_bridge.initAuth(config, "handleInitAuthResponse");
+}
+
+function startAuthentication(phoneNumber) {
+  window.finvu_authentication_bridge.startAuth(phoneNumber, "handleStartAuthResponse");
+}
+
+function verifyOTP(phoneNumber, otp) {
+  window.finvu_authentication_bridge.verifyOtp(phoneNumber, otp, "handleVerifyOtpResponse");
+}
 ```
 
 ---
 
-## 📤 Response Format & Status Reference
+## 📤 Response Format & Error Code Reference
 
-All responses to your JavaScript callback are sent as a **JSON string**. Parse it and check the `status` field to determine the result and next action.
+### Response Structure
 
-### Possible Statuses & Actions
+**Success Responses** contain:
+- `status`: Operation status (SUCCESS, INITIATE, etc.)
+- `statusCode`: HTTP-style status code (e.g., "200")
+- Additional fields like `token`, `authType`, `otp`, etc.
 
-| Status              | When Returned                | Example JSON                                                                 | Typical Action for App/Web         |
-|---------------------|-----------------------------|------------------------------------------------------------------------------|------------------------------------|
-| SUCCESS             | SDK ready, token received    | `{ "status": "SUCCESS", "statusCode": "200", "token": "..." }`           | Proceed, use token                 |
-| INITIATE            | After startAuth, OTP sent    | `{ "status": "INITIATE", "statusCode": "200", "authType": "OTP", "deliveryChannel": "SMS" }` | Prompt for OTP                     |
-| OTP_AUTO_READ       | OTP auto-read                | `{ "status": "OTP_AUTO_READ", "statusCode": "200", "otp": "123456" }`     | Auto-submit or show OTP            |
-| VERIFY              | OTP verified                 | `{ "status": "VERIFY", "statusCode": "200", "authType": "OTP" }`         | Proceed, show success              |
-| DELIVERY_STATUS     | Delivery info update         | `{ "status": "DELIVERY_STATUS", ... }`                                     | Show delivery status               |
-| FALLBACK_TRIGGERED  | Fallback flow triggered      | `{ "status": "FALLBACK_TRIGGERED", ... }`                                  | Handle fallback                    |
-| FAILURE             | Any error                    | `{ "status": "FAILURE", "errorCode": "1002", "errorMessage": "..." }`     | Show error, allow retry            |
-| SILENT_AUTH         | Silent authentication        | `{ "status": "VERIFY", "statusCode": "200", "authType": "SILENT_AUTH" }` | Wait for SUCCESS with token        |
+**Failure Responses** contain:
+- `status`: Always "FAILURE"
+- `errorCode`: Specific error code for troubleshooting
+- `errorMessage`: Human-readable error description
 
-#### Example: Silent Auth
-- If `authType` is `SILENT_AUTH`, **wait for a `SUCCESS` status with a `token` in the same callback** before proceeding. The flow is fully automatic and the token will be delivered in the same callback sequence.
+### Status Types
 
-#### Example: OTP
-- If `authType` is `OTP`, prompt the user to enter the OTP sent to their phone.
+| Status              | Description                          | Next Action                        |
+|---------------------|--------------------------------------|------------------------------------|
+| SUCCESS             | Operation completed successfully     | Use token or proceed               |
+| FAILURE             | Operation failed                     | Handle error, retry if appropriate |
+| INITIATE            | OTP sent, waiting for user input     | Show OTP input field               |
+| OTP_AUTO_READ       | OTP automatically read from SMS      | Auto-submit or show OTP            |
+| VERIFY              | Authentication verified              | Wait for SUCCESS with token       |
+| DELIVERY_STATUS     | SMS delivery status update           | Show delivery information          |
+| FALLBACK_TRIGGERED  | Fallback authentication triggered    | Handle fallback flow               |
 
-#### Example: Token
-- If the response contains a `token`, use it for your backend or further API calls.
+### Error Codes (Only in Failure Responses)
 
-#### Example: Failure
-- If `status` is `FAILURE`, show the `errorMessage` to the user and allow them to retry.
+| Error Code | Description                    | Common Causes                                    |
+|------------|--------------------------------|--------------------------------------------------|
+| 1001       | Invalid parameter              | Missing appId, invalid phone number/OTP format  |
+| 1002       | Generic failure                | Network issues, service unavailable             |
+| 5003       | SDK initialization failed      | Invalid app ID, network connectivity issues     |
+| 9106       | Silent Network Auth failed     | SIM/network conditions not met                  |
 
-### Common Error Codes & Messages
+### Input Validation Rules
 
-| Error Code | When/Why                                 | Message                                                         |
-|------------|------------------------------------------|-----------------------------------------------------------------|
-| 1002       | Generic failure                          | Authentication failed, something went wrong.                    |
-| 5003       | SDK initialization failed                | Authentication failed, SDK initialization failed.               |
-| 9106       | Silent auth failed                       | Authentication failed, something went wrong.                    |
-| (custom)   | OTP auto-read failed, token missing, etc | See errorMessage in response                                    |
+- **Phone Number**: 7-15 digits, cannot start with 0
+- **OTP**: 4-8 digits only
+- **App ID**: Required, cannot be empty
+
+---
+
+## ❓ FAQ
+
+### Q: What conditions are required for Silent Network Authentication (SNA)?
+**A:** For SNA to work properly:
+- **SIM internet must be ON** (mobile data enabled)
+- **WiFi must be OFF** (disconnect from WiFi networks)
+- Device must have active mobile network connectivity
+- SIM card must support the required network protocols
+
+If these conditions are not met, the SDK will automatically fall back to OTP-based authentication.
+
+### Q: Why am I getting error code 1001?
+**A:** Error 1001 indicates invalid parameters. Check:
+- App ID is provided and not empty in initAuth
+- Phone number format is correct (7-15 digits, no leading zero)
+- OTP format is correct (4-8 digits) when calling verifyOtp
+
+### Q: How do I handle multiple authentication statuses?
+**A:** Use the same callback function for startAuth to receive all status updates (INITIATE, OTP_AUTO_READ, VERIFY, SUCCESS). Each status provides context for the next step in the authentication flow.
 
 ---
 
 ## 🛡️ ProGuard
 
-If you use ProGuard/R8, the SDK provides consumer rules for the required dependencies. No extra configuration is needed unless you have custom requirements.
-
----
-
-## 📝 License
- 
-[MIT](./LICENSE)
-
----
-
-## 💬 Support
-
-For issues or feature requests, please open an [issue](https://github.com/Cookiejar-technologies/finvu-auth-sdk-android/issues).
+The SDK provides consumer rules for required dependencies. No extra configuration is needed unless you have custom requirements.
