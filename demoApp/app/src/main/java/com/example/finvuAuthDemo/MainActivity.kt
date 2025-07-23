@@ -50,16 +50,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        finvuAuthenticationWrapper = FinvuAuthenticationWrapper.instance
+        finvuAuthenticationWrapper = FinvuAuthenticationWrapper()
 
         loadWebViewButton.setOnClickListener {
             try {
 
-                finvuAuthenticationWrapper.setupWebView(
-                    webView = webView,
-                    activity = this,
-                    scope = lifecycleScope
-                )
+                finvuAuthenticationWrapper.setupWebView(webView, this, lifecycleScope)
                 loadWebViewButton.visibility = View.GONE
 
                 webView.visibility = View.VISIBLE

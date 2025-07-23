@@ -40,7 +40,7 @@ In your **app module** `build.gradle(.kts)`:
 
 ```kotlin
 dependencies {
-    implementation("com.finvu.android:finvuAuthenticationSDK:1.0.1") // Use the latest version
+    implementation("com.finvu.android:finvuAuthenticationSDK:1.0.0") // Use the latest version
 }
 ```
 
@@ -76,10 +76,10 @@ class MainActivity : AppCompatActivity() {
         // ... WebView settings ...
 
         // Setup the bridge
-        FinvuAuthenticationWrapper.instance.setupWebView(
-            webView = webView,
-            activity = this,
-            scope = lifecycleScope
+        FinvuAuthenticationWrapper().setupWebView(
+            webView,
+            this,
+            lifecycleScope
         )
 
         // Load your web app
@@ -88,7 +88,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        FinvuAuthenticationWrapper.instance.onDestroy()
+        FinvuAuthenticationWrapper.onDestroy()
     }
 }
 ```
