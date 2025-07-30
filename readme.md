@@ -8,7 +8,8 @@ A simple, secure Android SDK for integrating Finvu authentication into your app,
 
 **Minimum SDK version:** 25
 
-**Minimum Kotlin version:** 1.9.0
+**Minimum Kotlin
+ version:** 1.9.0
 
 ---
 
@@ -40,13 +41,14 @@ In your **app module** `build.gradle(.kts)`:
 
 ```kotlin
 dependencies {
-    implementation("com.finvu.android:finvuAuthenticationSDK:1.0.0") // Use the latest version
+    implementation("com.finvu.android:finvuAuthenticationSDK:latest_sdk_version) // Use the latest version
 }
 ```
 
-### 4. Add Network Security Config
-Add the following attribute to your `<application>` tag in your `AndroidManifest.xml`:
+> **Note:** Replace `latest_ios_sdk_version` in your Podfile with the actual version number. Latest version is `1.0.1`.
 
+### 4. Add Network Security Config
+Add the following attribute to your `<application>` tag in your `AndroidManifest.xml`[(Why SNA Config is needed in the customer App for SNA:)](https://docs.google.com/document/d/1TQndJJ1IvKAEt5aZxJE-EL156-Zw3e2RfhS7K-NgXHk/edit?usp=sharing) :
 ```xml
 <application
     ...
@@ -58,6 +60,103 @@ Add the following attribute to your `<application>` tag in your `AndroidManifest
 
 ---
 
+## 📋 Code Guidelines
+
+### 1. 🚫 Avoid Third-Party Imports in Authentication Flow
+
+Authentication screens (e.g., `AuthActivity`) should **only handle auth-related logic**. Do not use third-party analytics, logging, or unrelated services here.
+
+```kotlin
+// ❌ Avoid
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    ThirdPartyAnalytics.track("auth_started") // ❌ Not allowed
+    finvuAuthenticationWrapper.setupWebView(
+      webView, this, lifecycleScope, FinvuAuthEnvironment.DEVELOPMENT,
+    )
+}
+
+// ✅ Recommended
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    finvuAuthenticationWrapper.setupWebView(
+      webView, this, lifecycleScope, FinvuAuthEnvironment.DEVELOPMENT,
+    ) // ✅ Only WebView or auth setup logic
+}
+```
+
+### 2. 🔐 Do Not Store Sensitive Data in Local Storage
+
+Never store auth tokens or personal info like phone numbers in SharedPreferences, databases, or files. Pass data using callbacks or result intents.
+
+```Kotlin
+// ❌ Avoid
+val prefs = getSharedPreferences("auth", MODE_PRIVATE)
+prefs.edit().putString("auth_token", token).apply()
+```
+
+### 3. 🧹 Clean Data and Instances at End of Authentication Journey
+
+Always reset temporary variables and SDK resources once the auth process ends (on success, failure, or user exit).
+
+```Kotlin 
+override fun onDestroy() {
+    super.onDestroy()
+      phoneNumber = null
+}
+```
+
+### 4. 🔁 Avoid Redundant Authentication Method Calls
+
+Calling the same auth method multiple times (e.g., via double taps or spamming) leads to unwanted network traffic and unstable behavior.
+
+``` Kotlin
+// ❌ Avoid multiple calls
+window.finvu_authentication_bridge.startAuth(phoneNumber, "callbackName");
+window.finvu_authentication_bridge.startAuth(phoneNumber, "callbackName"); // Redundant
+
+// ✅ Recommended
+let isAuthInProgress = false;
+
+function handleStartAuth() {
+    if (isAuthInProgress) return;
+
+    isAuthInProgress = true;
+    window.finvu_authentication_bridge.startAuth(phoneNumber, "callbackName");
+}
+
+window.handleStartAuthResponse = function(response) {
+    isAuthInProgress = false;
+    // Process response
+};
+
+```
+
+### 5. 📲 Cleanup When User Exits Authentication Journey
+
+Clean up the authentication session when the user exits (via back press, auth complete, or app backgrounding).
+
+```Kotlin
+class AuthActivity : AppCompatActivity() {
+
+    override fun onBackPressed() {
+        cleanup()
+        super.onBackPressed()
+    }
+
+    override fun onDestroy() {
+        cleanup()
+        super.onDestroy()
+    }
+
+    private fun cleanup() {
+       finvuAuthenticationWrapper.onDestroy()
+        // Reset any temporary state
+    }
+}
+```
+
+---
 ## 🚀 Android Integration
 
 ### Setup the WebView Bridge
@@ -76,10 +175,12 @@ class MainActivity : AppCompatActivity() {
         // ... WebView settings ...
 
         // Setup the bridge
-        FinvuAuthenticationWrapper().setupWebView(
+        val finvuAuthenticationWrapper = FinvuAuthenticationWrapper()
+        finvuAuthenticationWrapper.setupWebView(
             webView,
             this,
-            lifecycleScope
+            lifecycleScope,
+            FinvuAuthEnvironment.DEVELOPMENT or FinvuAuthEnvironment.PRODUCTION
         )
 
         // Load your web app
@@ -91,6 +192,33 @@ class MainActivity : AppCompatActivity() {
         FinvuAuthenticationWrapper.onDestroy()
     }
 }
+```
+
+### Environment Configuration
+
+The SDK supports different environments for development and production:
+
+- **Development Environment** (`FinvuAuthEnvironment.DEVELOPMENT `): Enables verbose logging and debug features
+- **Production Environment** (`FinvuAuthEnvironment.PRODUCTION `): Minimal logging and optimized performance
+
+```swift
+// Development environment (with debug logging)
+val finvuAuthenticationWrapper = FinvuAuthenticationWrapper()
+finvuAuthenticationWrapper.setupWebView(
+  webView,
+  this,
+  lifecycleScope,
+  FinvuAuthEnvironment.DEVELOPMENT 
+)
+
+// Production environment (minimal logging)
+val finvuAuthenticationWrapper = FinvuAuthenticationWrapper()
+finvuAuthenticationWrapper.setupWebView(
+  webView,
+  this,
+  lifecycleScope,
+  FinvuAuthEnvironment.PRODUCTION 
+)
 ```
 
 ---
@@ -166,13 +294,6 @@ window.finvu_authentication_bridge.startAuth("9876543210", "handleStartAuthRespo
 
 **Success Responses:**
 ```json
-// OTP sent successfully
-{
-  "status": "INITIATE",
-  "statusCode": "200",
-  "authType": "SILENT_AUTH",
-  "deliveryChannel": ""
-}
 
 
 // Authentication completed with token
@@ -339,11 +460,6 @@ function verifyOTP(phoneNumber, otp) {
 |---------------------|--------------------------------------|------------------------------------|
 | SUCCESS             | Operation completed successfully     | Use token or proceed               |
 | FAILURE             | Operation failed                     | Handle error, retry if appropriate |
-| INITIATE            | OTP sent, waiting for user input     | Show OTP input field               |
-| OTP_AUTO_READ       | OTP automatically read from SMS      | Auto-submit or show OTP            |
-| VERIFY              | Authentication verified              | Wait for SUCCESS with token       |
-| DELIVERY_STATUS     | SMS delivery status update           | Show delivery information          |
-| FALLBACK_TRIGGERED  | Fallback authentication triggered    | Handle fallback flow               |
 
 ### Error Codes (Only in Failure Responses)
 
@@ -351,12 +467,10 @@ function verifyOTP(phoneNumber, otp) {
 |------------|--------------------------------|--------------------------------------------------|
 | 1001       | Invalid parameter              | Missing appId, invalid phone number/OTP format  |
 | 1002       | Generic failure                | Network issues, service unavailable             |
-| 5003       | SDK initialization failed      | Invalid app ID, network connectivity issues     |
-| 9106       | Silent Network Auth failed     | SIM/network conditions not met                  |
 
 ### Input Validation Rules
 
-- **Phone Number**: 7-15 digits, cannot start with 0
+- **Phone Number**: 10 digits, cannot start with 0
 - **OTP**: 4-8 digits only
 - **App ID**: Required, cannot be empty
 

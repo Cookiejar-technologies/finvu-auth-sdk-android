@@ -16,6 +16,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.finvu.android.authenticationwrapper.FinvuAuthenticationWrapper
+import com.finvu.android.authenticationwrapper.utils.FinvuAuthEnvironment
 
 
 class MainActivity : AppCompatActivity() {
@@ -55,11 +56,11 @@ class MainActivity : AppCompatActivity() {
         loadWebViewButton.setOnClickListener {
             try {
 
-                finvuAuthenticationWrapper.setupWebView(webView, this, lifecycleScope)
+                finvuAuthenticationWrapper.setupWebView(webView, this, lifecycleScope, FinvuAuthEnvironment.DEVELOPMENT )
                 loadWebViewButton.visibility = View.GONE
 
                 webView.visibility = View.VISIBLE
-                val url = "your actual URL"
+                val url = "https://test-web-app-8a50c.web.app"
                 webView.loadUrl(url)
             } catch (e: Exception) {
                 e.printStackTrace()
