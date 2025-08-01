@@ -52,7 +52,7 @@ Add the following attribute to your `<application>` tag in your `AndroidManifest
 ```xml
 <application
     ...
-    android:networkSecurityConfig="@xml/otpless_network_security_config"
+    android:networkSecurityConfig="@xml/finvu_silent_network_authentication_network_security_config"
     ... >
     <!-- Other attributes and activities -->
 </application>
