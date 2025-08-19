@@ -45,7 +45,7 @@ dependencies {
 }
 ```
 
-> **Note:** Replace `latest_ios_sdk_version` in your Podfile with the actual version number. Latest version is `1.0.1`.
+> **Note:** Replace `latest_ios_sdk_version` in your Podfile with the actual version number. Latest version is `1.0.2`.
 
 ### 4. Add Network Security Config
 Add the following attribute to your `<application>` tag in your `AndroidManifest.xml`[(Why SNA Config is needed in the customer App for SNA:)](https://docs.google.com/document/d/1TQndJJ1IvKAEt5aZxJE-EL156-Zw3e2RfhS7K-NgXHk/edit?usp=sharing) :
