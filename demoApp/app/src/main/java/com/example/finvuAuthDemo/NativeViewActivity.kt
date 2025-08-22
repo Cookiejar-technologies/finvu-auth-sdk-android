@@ -37,8 +37,8 @@ class NativeViewActivity : AppCompatActivity() {
 
         initAuthButton.setOnClickListener {
             val initConfig = mutableMapOf<String, Any>(
-                "appId" to "58FI169DV4A0Q4PGMDCR",
-                "requestId" to "7260c3c0-bc6e-4003-9295-c9913b9b521f"
+                "appId" to "",
+                "requestId" to ""
             )
             responseTextView.text = "processing"
 
