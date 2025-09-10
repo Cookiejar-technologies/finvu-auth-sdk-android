@@ -41,7 +41,7 @@ In your **app module** `build.gradle(.kts)`:
 
 ```kotlin
 dependencies {
-    implementation("com.finvu.android:finvuAuthenticationSDK:latest_sdk_version) // Use the latest version
+    implementation("com.finvu.android:finvuauthenticationsdk:latest_sdk_version") // Use the latest version
 }
 ```
 
