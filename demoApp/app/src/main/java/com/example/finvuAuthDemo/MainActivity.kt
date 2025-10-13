@@ -18,6 +18,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.finvu.android.authenticationwrapper.FinvuAuthenticationWrapper
 import com.finvu.android.authenticationwrapper.utils.FinvuAuthEnvironment
+import android.widget.EditText
+import android.text.Editable
+import android.text.TextWatcher
 
 
 class MainActivity : AppCompatActivity() {
@@ -26,6 +29,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var loadWebViewButton: Button
     private lateinit var loadNativeViewButton: Button
     private lateinit var finvuAuthenticationWrapper: FinvuAuthenticationWrapper
+    private lateinit var urlEditText: EditText
 
     companion object {
         private const val TAG = "FinvuExample"
@@ -40,6 +44,7 @@ class MainActivity : AppCompatActivity() {
         webView = findViewById(R.id.webView)
         loadWebViewButton = findViewById(R.id.loadWebViewButton)
         loadNativeViewButton = findViewById(R.id.loadNativeViewButton)
+        urlEditText = findViewById(R.id.urlEditText)
 
         try {
             finvuAuthenticationWrapper = FinvuAuthenticationWrapper()
@@ -51,6 +56,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupWebView()
+        setupInputListeners()
         bindListeners()
     }
 
@@ -75,6 +81,24 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupInputListeners() {
+        val toggleButtons: (Boolean) -> Unit = { enabled ->
+            loadWebViewButton.isEnabled = enabled
+        }
+        toggleButtons(false)
+
+        urlEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val nonEmpty = !s.isNullOrBlank()
+                toggleButtons(nonEmpty)
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
+        loadWebViewButton.isEnabled = true
+    }
+
     private fun bindListeners() {
         loadWebViewButton.setOnClickListener {
             try {
@@ -85,7 +109,8 @@ class MainActivity : AppCompatActivity() {
                 loadWebViewButton.visibility = View.GONE
                 loadNativeViewButton.visibility = View.GONE
                 webView.visibility = View.VISIBLE
-                webView.loadUrl("https://test-web-app-8a50c.web.app")
+                val url = urlEditText.text.toString().trim()
+                webView.loadUrl(if (url.isNotEmpty()) url else "https://test-web-app-8a50c.web.app")
             } catch (e: Exception) {
                 Log.e(TAG, "Error setting up WebView", e)
                 Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
