@@ -2,25 +2,24 @@ package com.example.finvuAuthDemo
 
 import android.content.Intent
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
 import android.view.View
-import android.webkit.ConsoleMessage
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
-import android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
+import android.widget.EditText
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.finvu.android.authenticationwrapper.FinvuAuthenticationWrapper
 import com.finvu.android.authenticationwrapper.utils.FinvuAuthEnvironment
-import android.widget.EditText
-import android.text.Editable
-import android.text.TextWatcher
 
 
 class MainActivity : AppCompatActivity() {
@@ -58,6 +57,7 @@ class MainActivity : AppCompatActivity() {
         setupWebView()
         setupInputListeners()
         bindListeners()
+        setupBackHandler()
     }
 
     private fun setupWebView() {
@@ -123,23 +123,26 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onBackPressed() {
-
-        if (webView.visibility == View.VISIBLE) {
-            // Reset UI to initial state
-            webView.visibility = View.GONE
-            loadWebViewButton.visibility = View.VISIBLE
-            loadNativeViewButton.visibility = View.VISIBLE
-
-            try {
-                finvuAuthenticationWrapper.onDestroy()
-                Log.d(TAG, "SDK cleanup completed on back press")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error during SDK cleanup on back press", e)
+    private fun setupBackHandler() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (webView.visibility == View.VISIBLE) {
+                    webView.visibility = View.GONE
+                    loadWebViewButton.visibility = View.VISIBLE
+                    loadNativeViewButton.visibility = View.VISIBLE
+                    try {
+                        finvuAuthenticationWrapper.onDestroy()
+                        Log.d(TAG, "SDK cleanup completed on back press")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error during SDK cleanup on back press", e)
+                    }
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
             }
-        }
+        })
     }
-
 
     override fun onDestroy() {
         super.onDestroy()

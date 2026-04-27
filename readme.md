@@ -1,6 +1,6 @@
 # FinvuAuthSDK
 
-A simple, secure Android SDK for integrating Finvu authentication into your app, with seamless support for WebView-based flows and JavaScript bridging.
+A simple, secure Android SDK for integrating Finvu Silent Network Authentication (SNA) into your app, with seamless support for WebView-based flows and JavaScript bridging.
 
 ---
 
@@ -41,11 +41,9 @@ In your **app module** `build.gradle(.kts)`:
 
 ```kotlin
 dependencies {
-    implementation("com.finvu.android:finvuauthenticationsdk:latest_sdk_version") // Use the latest version
+    implementation("com.finvu.android:finvuauthenticationsdk:1.0.7") // Use the latest version
 }
 ```
-
-> **Note:** Replace `latest_sdk_version` in your Podfile with the actual version number. Latest version is `1.0.3`.
 
 ### 4. Add Network Security Config
 Add the following attribute to your `<application>` tag in your `AndroidManifest.xml`[(Why SNA Config is needed in the customer App for SNA:)](https://docs.google.com/document/d/1TQndJJ1IvKAEt5aZxJE-EL156-Zw3e2RfhS7K-NgXHk/edit?usp=sharing) :
@@ -87,12 +85,12 @@ override fun onCreate(savedInstanceState: Bundle?) {
 
 ### 2. 🔐 Do Not Store Sensitive Data in Local Storage
 
-Never store auth tokens or personal info like phone numbers in SharedPreferences, databases, or files. Pass data using callbacks or result intents.
+Never store auth tokens or personal info in SharedPreferences, databases, or files. Pass data using callbacks or result intents.
 
 ```Kotlin
 // ❌ Avoid
 val prefs = getSharedPreferences("auth", MODE_PRIVATE)
-prefs.edit().putString("auth_token", token).apply()
+prefs.edit().putString("sna_token", token).apply()
 ```
 
 ### 3. 🧹 Clean Data and Instances at End of Authentication Journey
@@ -102,7 +100,7 @@ Always reset temporary variables and SDK resources once the auth process ends (o
 ```Kotlin 
 override fun onDestroy() {
     super.onDestroy()
-      phoneNumber = null
+    finvuAuthenticationWrapper.onDestroy()
 }
 ```
 
@@ -112,8 +110,8 @@ Calling the same auth method multiple times (e.g., via double taps or spamming) 
 
 ``` Kotlin
 // ❌ Avoid multiple calls
-window.finvu_authentication_bridge.startAuth(phoneNumber, "callbackName");
-window.finvu_authentication_bridge.startAuth(phoneNumber, "callbackName"); // Redundant
+window.finvu_authentication_bridge.startAuth(snaUri, "callbackName");
+window.finvu_authentication_bridge.startAuth(snaUri, "callbackName"); // Redundant
 
 // ✅ Recommended
 let isAuthInProgress = false;
@@ -122,7 +120,7 @@ function handleStartAuth() {
     if (isAuthInProgress) return;
 
     isAuthInProgress = true;
-    window.finvu_authentication_bridge.startAuth(phoneNumber, "callbackName");
+    window.finvu_authentication_bridge.startAuth(snaUri, "callbackName");
 }
 
 window.handleStartAuthResponse = function(response) {
@@ -166,6 +164,7 @@ The SDK provides a single method to set up the WebView bridge. No manual JS inte
 ```kotlin
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
+    private val finvuAuthenticationWrapper = FinvuAuthenticationWrapper()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -175,12 +174,11 @@ class MainActivity : AppCompatActivity() {
         // ... WebView settings ...
 
         // Setup the bridge
-        val finvuAuthenticationWrapper = FinvuAuthenticationWrapper()
         finvuAuthenticationWrapper.setupWebView(
             webView,
             this,
             lifecycleScope,
-            FinvuAuthEnvironment.DEVELOPMENT or FinvuAuthEnvironment.PRODUCTION
+            FinvuAuthEnvironment.DEVELOPMENT // or FinvuAuthEnvironment.PRODUCTION
         )
 
         // Load your web app
@@ -189,7 +187,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        FinvuAuthenticationWrapper.onDestroy()
+        finvuAuthenticationWrapper.onDestroy()
     }
 }
 ```
@@ -198,17 +196,17 @@ class MainActivity : AppCompatActivity() {
 
 The SDK supports different environments for development and production:
 
-- **Development Environment** (`FinvuAuthEnvironment.DEVELOPMENT `): Enables verbose logging and debug features
-- **Production Environment** (`FinvuAuthEnvironment.PRODUCTION `): Minimal logging and optimized performance
+- **Development Environment** (`FinvuAuthEnvironment.DEVELOPMENT`): Enables verbose logging and debug features
+- **Production Environment** (`FinvuAuthEnvironment.PRODUCTION`): Minimal logging and optimized performance
 
-```swift
+```kotlin
 // Development environment (with debug logging)
 val finvuAuthenticationWrapper = FinvuAuthenticationWrapper()
 finvuAuthenticationWrapper.setupWebView(
   webView,
   this,
   lifecycleScope,
-  FinvuAuthEnvironment.DEVELOPMENT 
+  FinvuAuthEnvironment.DEVELOPMENT
 )
 
 // Production environment (minimal logging)
@@ -217,7 +215,7 @@ finvuAuthenticationWrapper.setupWebView(
   webView,
   this,
   lifecycleScope,
-  FinvuAuthEnvironment.PRODUCTION 
+  FinvuAuthEnvironment.PRODUCTION
 )
 ```
 
@@ -230,28 +228,32 @@ Once the bridge is set up, your web app can call the following methods from Java
 ### Available Methods
 
 ```javascript
-// Initialize the SDK with your app configuration
+// Initialize the SDK
 window.finvu_authentication_bridge.initAuth(initConfig, callbackName);
 
-// Start authentication with phone number
-window.finvu_authentication_bridge.startAuth(phoneNumber, callbackName);
-
-// Verify OTP
-window.finvu_authentication_bridge.verifyOtp(phoneNumber, otp, callbackName);
+// Start Silent Network Authentication with an SNA URI
+window.finvu_authentication_bridge.startAuth(snaUri, callbackName);
 ```
 
 ### Method Details
 
 #### 1. initAuth(initConfig, callbackName)
-Initializes the Finvu authentication SDK.
+Initializes the Finvu authentication SDK and detects the cellular network (MCC/MNC).
 
 **Parameters:**
-- `initConfig` (string): JSON configuration containing your app ID
+- `initConfig` (string): JSON configuration. All fields are optional.
 - `callbackName` (string): JavaScript callback function name
+
+**Supported config fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `requestId` | string | No | Optional request identifier for tracking |
+| `entityId` | string | No | Optional entity identifier |
 
 **Example:**
 ```javascript
-const config = JSON.stringify({ appId: "YOUR_APP_ID" });
+const config = JSON.stringify({ requestId: "req_001" });
 window.finvu_authentication_bridge.initAuth(config, "handleInitAuthResponse");
 ```
 
@@ -259,123 +261,89 @@ window.finvu_authentication_bridge.initAuth(config, "handleInitAuthResponse");
 ```json
 {
   "status": "SUCCESS",
-  "statusCode": "200"
+  "mcc": "404",
+  "mnc": "45"
 }
 ```
 
 **Failure Responses:**
 ```json
-// Missing or empty app ID
+// Invalid JSON config
 {
   "status": "FAILURE",
-  "errorCode": "1001",
-  "errorMessage": "appId is required"
+  "errorCode": "INVALID_JSON_CONFIGURATION",
+  "errorMessage": "Invalid JSON configuration for Finvu Authentication SDK."
 }
 
-// SDK initialization failed
+// No cellular network
 {
   "status": "FAILURE",
-  "errorCode": "1002",
-  "errorMessage": "Authentication failed, SDK initialization failed. Please try initializing the SDK again."
+  "errorCode": "SNA_CELLULAR_UNAVAILABLE",
+  "errorMessage": "No cellular network available. Please ensure cellular data is enabled."
+}
+
+// WiFi active, not on mobile data
+{
+  "status": "FAILURE",
+  "errorCode": "SNA_DEVICE_NOT_ON_MOBILE_DATA",
+  "errorMessage": "Not connected to mobile data. Please disable WiFi and use cellular network."
 }
 ```
 
-#### 2. startAuth(phoneNumber, callbackName)
-Starts the authentication process for a phone number.
+#### 2. startAuth(snaUri, callbackName)
+Performs Silent Network Authentication by following the SNA URI over the cellular network.
 
 **Parameters:**
-- `phoneNumber` (string): User's mobile number (without country code)
+- `snaUri` (string): The SNA URI provided by your backend
 - `callbackName` (string): JavaScript callback function name
 
 **Example:**
 ```javascript
-window.finvu_authentication_bridge.startAuth("9876543210", "handleStartAuthResponse");
-```
-
-**Success Responses:**
-```json
-
-
-// Authentication completed with token
-{
-  "status": "SUCCESS",
-  "statusCode": "200",
-  "authType": "SILENT_AUTH",
-  "token": "your_auth_token_here"
-}
-```
-
-**Failure Responses:**
-```json
-// Invalid phone number format
-{
-  "status": "FAILURE",
-  "errorCode": "1001",
-  "errorMessage": "Invalid phone number format"
-}
-
-// Silent Network Authentication failed
-{
-  "status": "FAILURE",
-  "errorCode": "1002",
-  "errorMessage": "Authentication failed, SNA failed."
-}
-
-// Generic failure
-{
-  "status": "FAILURE",
-  "errorCode": "1002",
-  "errorMessage": "Authentication failed, something went wrong."
-}
-```
-
-#### 3. verifyOtp(phoneNumber, otp, callbackName)
-Verifies the OTP entered by the user.
-
-**Parameters:**
-- `phoneNumber` (string): User's mobile number (same as used in startAuth)
-- `otp` (string): OTP entered by user
-- `callbackName` (string): JavaScript callback function name
-
-**Example:**
-```javascript
-window.finvu_authentication_bridge.verifyOtp("9876543210", "123456", "handleVerifyOtpResponse");
+window.finvu_authentication_bridge.startAuth(
+  "https://your-sna-endpoint.example.com/auth?...",
+  "handleStartAuthResponse"
+);
 ```
 
 **Success Response:**
 ```json
 {
   "status": "SUCCESS",
-  "statusCode": "200",
-  "authType": "OTP",
-  "token": "your_auth_token_here"
+  "httpStatusCode": 200,
+  "snaToken": "your_sna_token_here"
 }
 ```
 
 **Failure Responses:**
 ```json
-// Invalid OTP format
+// Empty or missing SNA URI
 {
   "status": "FAILURE",
-  "errorCode": "1001",
-  "errorMessage": "Invalid OTP format"
+  "errorCode": "INVALID_SNA_URI",
+  "errorMessage": "Invalid SNA URI provided"
 }
 
-// OTP verification failed
+// initAuth was not called first
 {
   "status": "FAILURE",
-  "errorCode": "1002",
-  "errorMessage": "Authentication failed, something went wrong."
+  "errorCode": "SESSION_NOT_INITIALIZED",
+  "errorMessage": "Session not initialized. Please call initAuth first."
+}
+
+// Network request failed
+{
+  "status": "FAILURE",
+  "errorCode": "SNA_CONNECTION_FAILED",
+  "errorMessage": "Connection failed"
+}
+
+// Request timed out
+{
+  "status": "FAILURE",
+  "errorCode": "SNA_CELLULAR_TIMEOUT",
+  "errorMessage": "Connection timeout - SNA request took too long"
 }
 ```
-
-### Callback Flow & Status Handling
-
-> **Important:** After calling `startAuth(phoneNumber, callbackName)`, the same callback function will be invoked for all subsequent statuses in the authentication flow, including `INITIATE`, `OTP_AUTO_READ`, `VERIFY`, and `SUCCESS`.
->
-> - **Silent Authentication**: If `authType` is `SILENT_AUTH`, wait for a `SUCCESS` status with a `token` in the same callback before proceeding.
-> - **OTP Flow**: If `authType` is `OTP`, prompt the user to enter the OTP, then call `verifyOtp`. The response will be delivered to its own callback.
-> - **Auto-read**: If OTP auto-read is successful, you may receive `OTP_AUTO_READ` and then `SUCCESS` automatically.
 
 ### Example Integration
 
@@ -384,57 +352,33 @@ window.finvu_authentication_bridge.verifyOtp("9876543210", "123456", "handleVeri
 window.handleInitAuthResponse = (responseStr) => {
   const response = JSON.parse(responseStr);
   if (response.status === "SUCCESS") {
-    console.log("SDK initialized successfully");
-    // Proceed with authentication
+    console.log("SDK initialized. MCC:", response.mcc, "MNC:", response.mnc);
+    // Proceed: fetch SNA URI from your backend and call startAuth
   } else {
-    console.error("SDK initialization failed:", response.errorMessage);
+    console.error("SDK initialization failed:", response.errorCode, response.errorMessage);
   }
 };
 
 window.handleStartAuthResponse = (responseStr) => {
   const response = JSON.parse(responseStr);
-  console.log("Auth response:", response);
-  
-  switch (response.status) {
-    case "INITIATE":
-      // Show OTP input field
-      showOtpInput();
-      break;
 
-    case "SUCCESS":
-      if (response.token) {
-        // Use token for API calls
-        handleAuthSuccess(response.token);
-      }
-      break;
-    case "FAILURE":
-      // Handle error
-      showError(response.errorMessage);
-      break;
-  }
-};
-
-window.handleVerifyOtpResponse = (responseStr) => {
-  const response = JSON.parse(responseStr);
-  if (response.status === "SUCCESS" && response.token) {
-    handleAuthSuccess(response.token);
+  if (response.status === "SUCCESS" && response.snaToken) {
+    // Send snaToken to your backend to complete verification
+    handleAuthSuccess(response.snaToken);
   } else {
-    showError(response.errorMessage || "OTP verification failed");
+    console.error("SNA failed:", response.errorCode, response.errorMessage);
+    handleAuthFailure(response.errorMessage);
   }
 };
 
 // Usage
 function initializeAuth() {
-  const config = JSON.stringify({ appId: "YOUR_APP_ID" });
+  const config = JSON.stringify({ requestId: "req_001" });
   window.finvu_authentication_bridge.initAuth(config, "handleInitAuthResponse");
 }
 
-function startAuthentication(phoneNumber) {
-  window.finvu_authentication_bridge.startAuth(phoneNumber, "handleStartAuthResponse");
-}
-
-function verifyOTP(phoneNumber, otp) {
-  window.finvu_authentication_bridge.verifyOtp(phoneNumber, otp, "handleVerifyOtpResponse");
+function startAuthentication(snaUri) {
+  window.finvu_authentication_bridge.startAuth(snaUri, "handleStartAuthResponse");
 }
 ```
 
@@ -445,34 +389,41 @@ function verifyOTP(phoneNumber, otp) {
 ### Response Structure
 
 **Success Responses** contain:
-- `status`: Operation status (SUCCESS, INITIATE, etc.)
-- `statusCode`: HTTP-style status code (e.g., "200")
-- Additional fields like `token`, `authType`, `otp`, etc.
+- `status`: `"SUCCESS"`
+- Additional fields depending on the method (`mcc`, `mnc`, `httpStatusCode`, `snaToken`)
 
 **Failure Responses** contain:
-- `status`: Always "FAILURE"
-- `errorCode`: Specific error code for troubleshooting
+- `status`: `"FAILURE"`
+- `errorCode`: String code identifying the failure type
 - `errorMessage`: Human-readable error description
 
-### Status Types
+### Error Code Reference
 
-| Status              | Description                          | Next Action                        |
-|---------------------|--------------------------------------|------------------------------------|
-| SUCCESS             | Operation completed successfully     | Use token or proceed               |
-| FAILURE             | Operation failed                     | Handle error, retry if appropriate |
+#### initAuth Error Codes
 
-### Error Codes (Only in Failure Responses)
+| Error Code | Error Message | Cause |
+|------------|---------------|-------|
+| `INVALID_JSON_CONFIGURATION` | Invalid JSON configuration for Finvu Authentication SDK. | Malformed JSON passed to initAuth |
+| `SNA_CELLULAR_UNAVAILABLE` | No cellular network available. Please ensure cellular data is enabled. | No SIM / no mobile signal |
+| `SNA_DEVICE_NOT_ON_MOBILE_DATA` | Not connected to mobile data. Please disable WiFi and use cellular network. | WiFi is active, mobile data is off |
 
-| Error Code | Description                    | Common Causes                                    |
-|------------|--------------------------------|--------------------------------------------------|
-| 1001       | Invalid parameter              | Missing appId, invalid phone number/OTP format  |
-| 1002       | Generic failure                | Network issues, service unavailable             |
+#### startAuth Error Codes
+
+| Error Code | Error Message | Cause |
+|------------|---------------|-------|
+| `INVALID_SNA_URI` | Invalid SNA URI provided | Empty or blank snaUri argument |
+| `SESSION_NOT_INITIALIZED` | Session not initialized. Please call initAuth first. | startAuth called before initAuth |
+| `SNA_CONNECTION_FAILED` | Connection failed | General network connectivity failure |
+| `SNA_CELLULAR_REQUEST_FAILED` | SNA request failed | HTTP request over cellular failed |
+| `SNA_INVALID_REDIRECT` | Invalid redirect URL | Redirect chain returned a bad URL |
+| `SNA_TOO_MANY_REDIRECTS` | Too many redirects | Redirect loop detected |
+| `SNA_INVALID_RESPONSE` | Response has no data or is corrupt | Server returned an unexpected response |
+| `SNA_CELLULAR_TIMEOUT` | Connection timeout - SNA request took too long | Request exceeded the timeout threshold |
 
 ### Input Validation Rules
 
-- **Phone Number**: 10 digits, cannot start with 0
-- **OTP**: 4-8 digits only
-- **App ID**: Required, cannot be empty
+- **SNA URI**: Must be a non-empty string
+- **initConfig**: Must be valid JSON (all fields optional)
 
 ---
 
@@ -485,16 +436,16 @@ function verifyOTP(phoneNumber, otp) {
 - Device must have active mobile network connectivity
 - SIM card must support the required network protocols
 
-If these conditions are not met, the SDK will automatically fall back to OTP-based authentication.
+### Q: What is the SNA URI and where do I get it?
+**A:** The SNA URI is a one-time URL generated by your backend (via the Finvu API) for the specific authentication session. Your web app should request it from your server after calling `initAuth`, then pass it to `startAuth`.
 
-### Q: Why am I getting error code 1001?
-**A:** Error 1001 indicates invalid parameters. Check:
-- App ID is provided and not empty in initAuth
-- Phone number format is correct (7-15 digits, no leading zero)
-- OTP format is correct (4-8 digits) when calling verifyOtp
+### Q: Why am I getting `SNA_CELLULAR_UNAVAILABLE` or `SNA_DEVICE_NOT_ON_MOBILE_DATA`?
+**A:** These errors indicate the device is not routed over cellular:
+- `SNA_CELLULAR_UNAVAILABLE`: Enable mobile data / ensure SIM is active
+- `SNA_DEVICE_NOT_ON_MOBILE_DATA`: Disable WiFi and retry
 
-### Q: How do I handle multiple authentication statuses?
-**A:** Use the same callback function for startAuth to receive all status updates (INITIATE, OTP_AUTO_READ, VERIFY, SUCCESS). Each status provides context for the next step in the authentication flow.
+### Q: Why am I getting `SESSION_NOT_INITIALIZED`?
+**A:** `startAuth` was called before `initAuth` completed successfully. Always wait for a `SUCCESS` response from `initAuth` before calling `startAuth`.
 
 ---
 
