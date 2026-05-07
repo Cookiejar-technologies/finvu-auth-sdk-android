@@ -40,7 +40,7 @@ android {
 }
 
 dependencies {
-    implementation("com.finvu.android:finvuauthenticationsdk:1.0.3")
+    implementation("io.github.cookiejar-technologies:finvuauthenticationsdk:1.0.0")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
