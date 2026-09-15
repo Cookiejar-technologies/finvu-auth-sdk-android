@@ -1,6 +1,6 @@
 # Finvu Auth SDK — Android
 
-**Version:** `1.0.0` · **Min SDK:** API 25 · **Kotlin:** 1.9.0+
+**Version:** `1.1.0` · **Min SDK:** API 25 · **Kotlin:** 1.9.0+
 
 Silent Network Authentication (SNA) SDK for Android, with WebView bridge support for web-based authentication flows.
 
@@ -23,7 +23,7 @@ Add the dependency to your **app-level** `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("io.github.cookiejar-technologies:finvuauthenticationsdk:1.0.0")
+    implementation("io.github.cookiejar-technologies:finvuauthenticationsdk:1.1.0")
 }
 ```
 
