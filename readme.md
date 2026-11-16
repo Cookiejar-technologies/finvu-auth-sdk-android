@@ -1,6 +1,6 @@
 # Finvu Auth SDK — Android
 
-**Version:** `1.1.2` · **Min SDK:** API 25 · **Kotlin:** 1.9.0+
+**Version:** `1.1.5` · **Min SDK:** API 25 · **Kotlin:** 1.9.0+
 
 Silent Network Authentication (SNA) and Device Binding SDK for Android, with WebView bridge support for web-based authentication flows.
 
@@ -23,7 +23,7 @@ Add the dependency to your **app-level** `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("io.github.cookiejar-technologies:finvuauthenticationsdk:1.1.2")
+    implementation("io.github.cookiejar-technologies:finvuauthenticationsdk:1.1.5")
 }
 ```
 
@@ -247,7 +247,7 @@ nativeWrapper.signDeviceBindingChallenge(
 
 ```kotlin
 val capabilities = nativeWrapper.getCapabilities()
-// {"status":"SUCCESS","sdkVersion":"1.1.2","platform":"android","bridgeVersion":2,"factors":["SNA","DEVICE_BINDING"],"supportedMethods":[...]}
+// {"status":"SUCCESS","sdkVersion":"1.1.5","platform":"android","bridgeVersion":2,"factors":["SNA","DEVICE_BINDING"],"supportedMethods":[...]}
 ```
 
 ---
